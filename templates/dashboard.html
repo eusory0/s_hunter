@@ -6,11 +6,14 @@
   <title>s_hunter</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto; margin: 24px; }
-    .row { display:flex; gap:12px; justify-content:space-between; align-items:center; }
+    .row { display:flex; gap:12px; justify-content:space-between; align-items:center; flex-wrap: wrap; }
     table { width:100%; border-collapse: collapse; margin-top: 16px; }
     th, td { text-align:left; padding:10px; border-bottom: 1px solid #eee; }
     .score { font-weight:700; }
     .pill { padding:2px 8px; border:1px solid #ddd; border-radius:999px; font-size:12px; }
+    input { padding:8px; border:1px solid #ddd; border-radius:10px; }
+    button { padding:8px 10px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:pointer; }
+    .muted { color:#666; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -19,7 +22,21 @@
     <div class="pill">MVP</div>
   </div>
 
-  <p>Top opportunities (sorted by score desc).</p>
+  <div class="row">
+    <form method="get" action="/" style="display:flex; gap:10px; align-items:center;">
+      <label class="muted">Min score:</label>
+      <input type="number" name="min_score" min="0" max="100" step="1"
+             value="{% if min_score is not none %}{{ min_score }}{% endif %}"
+             placeholder="ex: 85">
+      <button type="submit">Apply</button>
+      <a class="muted" href="/">Clear</a>
+    </form>
+
+    <div class="muted">
+      API: <a href="/api/opportunities" target="_blank" rel="noreferrer">/api/opportunities</a> ·
+      <a href="/api/high?min_score=85" target="_blank" rel="noreferrer">/api/high</a>
+    </div>
+  </div>
 
   <table>
     <thead>
