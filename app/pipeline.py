@@ -3,13 +3,23 @@ from app.scoring import score_opportunity
 from app.models import Opportunity
 from app.store import upsert_opportunity, mark_alerted
 from app.alerts import maybe_alert_discord
+
 from app.collectors.rss import fetch_rss
 from app.collectors.github import fetch_releases
+
+# NEW: Testnet hunter + token check
 from app.collectors.testnet import fetch_testnet_from_rss
 from app.coingecko import coingecko_search
 
+
 def _handle_item(item: dict) -> bool:
-    s = score_opportunity(item["source"], item["type"], item["title"], item["url"], item.get("meta") or {})
+    s = score_opportunity(
+        item["source"],
+        item["type"],
+        item["title"],
+        item["url"],
+        item.get("meta") or {},
+    )
     opp = Opportunity(**item, score=s)
 
     inserted = upsert_opportunity(opp)
@@ -19,42 +29,50 @@ def _handle_item(item: dict) -> bool:
             mark_alerted(opp.id)
     return inserted
 
+
 def run_pipeline() -> dict:
     new_count = 0
     scanned = 0
 
-    # RSS
+    # Shared sources list
     rss_urls = [u.strip() for u in settings.RSS_URLS.split(",") if u.strip()]
+
+    # 1) RSS (general posts)
     for url in rss_urls:
         for item in fetch_rss(url):
             scanned += 1
             if _handle_item(item):
                 new_count += 1
 
-# Testnet Hunter
-for url in rss_urls:
-    for item in fetch_testnet_from_rss(url):
-        scanned += 1
+    # 2) RSS-derived TESTNET Hunter (multi-factor)
+    # Detect testnet-like posts, then enrich with token existence signal (CoinGecko).
+    for url in rss_urls:
+        for item in fetch_testnet_from_rss(url):
+            scanned += 1
 
-        project = (item.get("meta") or {}).get("project")
-        token_found = None
+            project = (item.get("meta") or {}).get("project")
+            token_found = None
+            token_best = None
 
-        if project:
-            try:
-                res = coingecko_search(project)
-                token_found = bool(res.get("found"))
-            except Exception:
-                token_found = None
+            if project:
+                try:
+                    res = coingecko_search(project)
+                    token_found = bool(res.get("found"))
+                    token_best = res.get("best")
+                except Exception:
+                    token_found = None
+                    token_best = None
 
-        item["meta"] = {
-            **(item.get("meta") or {}),
-            "token_found": token_found
-        }
+            item["meta"] = {
+                **(item.get("meta") or {}),
+                "token_found": token_found,
+                "token_best": token_best,
+            }
 
-        if _handle_item(item):
-            new_count += 1
+            if _handle_item(item):
+                new_count += 1
 
-    # GitHub
+    # 3) GitHub releases
     repos = [r.strip() for r in settings.GITHUB_REPOS.split(",") if r.strip()]
     for repo in repos:
         try:
@@ -63,6 +81,7 @@ for url in rss_urls:
                 if _handle_item(item):
                     new_count += 1
         except Exception:
+            # ignore repo failures for MVP
             pass
 
     return {"scanned": scanned, "new": new_count}
