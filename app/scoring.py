@@ -2,26 +2,34 @@ def score_opportunity(source: str, opp_type: str, title: str, url: str, meta: di
     t = (title or "").lower()
     score = 40.0
 
-    # Testnet boost
-    if opp_type == "testnet":
-        score += 30
+    # Noise penalty (enterprise/regulation)
+    if any(k in t for k in ["etf", "sec", "approval", "wisdomtree", "wall street", "tokenized"]):
+        score -= 30
 
+    # Testnet is our main monetization signal
+    if opp_type == "testnet":
+        score += 30  # base testnet boost
+
+        # tokenless = big deal (airdrop probability)
         if meta.get("token_found") is False:
             score += 25
 
+        # extra keywords
+        if any(k in t for k in ["points", "incentivized", "faucet"]):
+            score += 10
+
+        # optional cross-signals (for later)
         if meta.get("funding_detected") is True:
-            score += 20
+            score += 15
 
-    # Funding boost
+    # Funding (kept smaller than testnet for now)
     if opp_type == "funding":
-        score += 20
-
-    # Generic keywords
-    if any(k in t for k in ["airdrop", "retroactive", "incentive", "points"]):
         score += 15
+        if meta.get("token_found") is False:
+            score += 10
 
-    # Noise penalty
-    if any(k in t for k in ["etf", "sec approval", "regulated", "tokenized mmes"]):
-        score -= 30
+    # Small generic boosts
+    if any(k in t for k in ["airdrop", "retroactive"]):
+        score += 10
 
     return float(max(0.0, min(100.0, score)))
