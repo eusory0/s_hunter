@@ -1,26 +1,27 @@
 def score_opportunity(source: str, opp_type: str, title: str, url: str, meta: dict) -> float:
     t = (title or "").lower()
-    score = 40.0  # baseline
+    score = 40.0
 
-    # Generic keywords
-    if any(k in t for k in ["airdrop", "retroactive", "incentive", "rewards", "campaign"]):
+    # Testnet boost
+    if opp_type == "testnet":
         score += 30
-    if any(k in t for k in ["testnet", "alpha", "beta", "devnet"]):
-        score += 20
-    if any(k in t for k in ["grant", "hackathon", "bounty"]):
-        score += 20
-    if any(k in t for k in ["governance", "snapshot", "proposal"]):
-        score += 10
 
-    # Funding-specific boost
-    if opp_type == "funding":
-        score += 25
-        # Tokenless = foarte valoros pentru airdrop probability
         if meta.get("token_found") is False:
             score += 25
 
-    # Light source bias
-    if source == "github" and opp_type == "release":
-        score += 5
+        if meta.get("funding_detected") is True:
+            score += 20
+
+    # Funding boost
+    if opp_type == "funding":
+        score += 20
+
+    # Generic keywords
+    if any(k in t for k in ["airdrop", "retroactive", "incentive", "points"]):
+        score += 15
+
+    # Noise penalty
+    if any(k in t for k in ["etf", "sec approval", "regulated", "tokenized mmes"]):
+        score -= 30
 
     return float(max(0.0, min(100.0, score)))
