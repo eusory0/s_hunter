@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>s_hunter</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto; margin: 24px; }
+    .row { display:flex; gap:12px; justify-content:space-between; align-items:center; }
+    table { width:100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { text-align:left; padding:10px; border-bottom: 1px solid #eee; }
+    .score { font-weight:700; }
+    .pill { padding:2px 8px; border:1px solid #ddd; border-radius:999px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <h1>s_hunter</h1>
+    <div class="pill">MVP</div>
+  </div>
+
+  <p>Top opportunities (sorted by score desc).</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Score</th>
+        <th>Title</th>
+        <th>Source</th>
+        <th>Type</th>
+        <th>Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in opps %}
+      <tr>
+        <td class="score">{{ "%.0f"|format(o.score) }}</td>
+        <td><a href="{{ o.url }}" target="_blank" rel="noreferrer">{{ o.title }}</a></td>
+        <td>{{ o.source }}</td>
+        <td>{{ o.type }}</td>
+        <td>{{ o.ts }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
