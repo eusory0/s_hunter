@@ -3,42 +3,47 @@ from app.db import connect
 from app.models import Opportunity
 
 def upsert_opportunity(opp: Opportunity) -> bool:
-    """
-    Returns True if inserted (new), False if already existed.
-    """
-    conn = connect()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM opportunities WHERE id = ?", (opp.id,))
-    exists = cur.fetchone() is not None
-    if not exists:
-        cur.execute("""
-            INSERT INTO opportunities (id, source, type, title, url, ts, score, meta_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (opp.id, opp.source, opp.type, opp.title, opp.url, opp.ts, opp.score, json.dumps(opp.meta)))
-        conn.commit()
-    conn.close()
-    return not exists
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM opportunities WHERE id = %s", (opp.id,))
+            exists = cur.fetchone() is not None
+            if not exists:
+                cur.execute("""
+                    INSERT INTO opportunities (id, source, type, title, url, ts, score, meta_json)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    opp.id,
+                    opp.source,
+                    opp.type,
+                    opp.title,
+                    opp.url,
+                    opp.ts,
+                    opp.score,
+                    json.dumps(opp.meta),
+                ))
+                conn.commit()
+            return not exists
 
 def list_opportunities(limit: int = 200):
-    conn = connect()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT id, source, type, title, url, ts, score, meta_json
-        FROM opportunities
-        ORDER BY score DESC, ts DESC
-        LIMIT ?
-    """, (limit,))
-    rows = cur.fetchall()
-    conn.close()
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, source, type, title, url, ts, score
+                FROM opportunities
+                ORDER BY score DESC, ts DESC
+                LIMIT %s
+            """, (limit,))
+            rows = cur.fetchall()
+
     out = []
-    for r in rows:
+    for (id_, source, type_, title, url, ts, score) in rows:
         out.append({
-            "id": r["id"],
-            "source": r["source"],
-            "type": r["type"],
-            "title": r["title"],
-            "url": r["url"],
-            "ts": r["ts"],
-            "score": r["score"],
+            "id": id_,
+            "source": source,
+            "type": type_,
+            "title": title,
+            "url": url,
+            "ts": ts.isoformat() if hasattr(ts, "isoformat") else str(ts),
+            "score": float(score),
         })
     return out

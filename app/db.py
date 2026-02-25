@@ -1,25 +1,24 @@
-import sqlite3
 from app.config import settings
+import psycopg
 
 def connect():
-    conn = sqlite3.connect(settings.SQLITE_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if not settings.DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not set")
+    return psycopg.connect(settings.DATABASE_URL)
 
 def init_db():
-    conn = connect()
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS opportunities (
-        id TEXT PRIMARY KEY,
-        source TEXT NOT NULL,
-        type TEXT NOT NULL,
-        title TEXT NOT NULL,
-        url TEXT NOT NULL,
-        ts TEXT NOT NULL,
-        score REAL NOT NULL,
-        meta_json TEXT
-    )
-    """)
-    conn.commit()
-    conn.close()
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS opportunities (
+                id TEXT PRIMARY KEY,
+                source TEXT NOT NULL,
+                type TEXT NOT NULL,
+                title TEXT NOT NULL,
+                url TEXT NOT NULL,
+                ts TIMESTAMPTZ NOT NULL,
+                score DOUBLE PRECISION NOT NULL,
+                meta_json TEXT
+            )
+            """)
+        conn.commit()
